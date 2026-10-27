@@ -30,9 +30,10 @@ class TransformerBlock(torch.nn.Module):
     def forward(
         self,
         x_BLD: torch.Tensor,
+        rotary: torch.nn.Module | None = None,
     ) -> torch.Tensor:
         normed_BLD = self.norm_attention(x_BLD)  # (B, L, D)
-        attn_BLD = self.attention(normed_BLD)  # (B, L, D)
+        attn_BLD = self.attention(normed_BLD, rotary)  # (B, L, D)
         x_BLD = x_BLD + self.dropout(attn_BLD)  # (B, L, D)
         mlp_BLD = self.mlp(self.norm_mlp(x_BLD))  # (B, L, D)
         return x_BLD + self.dropout(mlp_BLD)  # (B, L, D)

@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from einops import rearrange
 import torch
 
+from basilisk.rope import Rotary, apply_rotary_pos_emb
+
 
 class ScaledDotProductAttention(torch.nn.Module):
 
@@ -59,10 +61,13 @@ class MultiHeadAttention(torch.nn.Module):
     def forward(
         self,
         x_BLD: torch.Tensor,
+        rotary: Rotary | None = None,
     ) -> torch.Tensor:
         q_BHLK = self._split_heads(x_BLD, self.w_q_DHK)
         k_BHLK = self._split_heads(x_BLD, self.w_k_DHK)
         v_BHLK = self._split_heads(x_BLD, self.w_v_DHK)
+        if rotary is not None:
+            q_BHLK, k_BHLK = self._apply_rope(q_BHLK, k_BHLK, rotary)
 
         attn_BHLL = torch.einsum("b h l k, b h s k -> b h l s", q_BHLK, k_BHLK)  # (B, H, L, L)
         attn_BHLL = attn_BHLL / (self.head_dim ** 0.5)
@@ -72,6 +77,16 @@ class MultiHeadAttention(torch.nn.Module):
         out_BLHK = rearrange(out_BHLK, "b h l k -> b l h k")  # (B, L, H, K)
         joined_BLH = rearrange(out_BLHK, "b l h k -> b l (h k)")  # (B, L, H * K)
         return joined_BLH @ rearrange(self.w_o_HKD, "h k d -> (h k) d")  # (B, L, D)
+
+
+    def _apply_rope(
+        self,
+        q_BHLK: torch.Tensor,
+        k_BHLK: torch.Tensor,
+        rotary: Rotary,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        cos, sin = rotary(q_BHLK, seq_dim=2)  # (1, 1, L, K)
+        return apply_rotary_pos_emb(q_BHLK, k_BHLK, cos, sin)
 
 
     def _split_heads(self, x_BLD: torch.Tensor, w_DHK: torch.Tensor) -> torch.Tensor:
