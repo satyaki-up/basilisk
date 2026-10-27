@@ -58,13 +58,11 @@ class MultiHeadAttention(torch.nn.Module):
 
     def forward(
         self,
-        q_BLD: torch.Tensor,
-        k_BLD: torch.Tensor,
-        v_BLD: torch.Tensor,
+        x_BLD: torch.Tensor,
     ) -> torch.Tensor:
-        q_BHLK = self._split_heads(q_BLD, self.w_q_DHK)
-        k_BHLK = self._split_heads(k_BLD, self.w_k_DHK)
-        v_BHLK = self._split_heads(v_BLD, self.w_v_DHK)
+        q_BHLK = self._split_heads(x_BLD, self.w_q_DHK)
+        k_BHLK = self._split_heads(x_BLD, self.w_k_DHK)
+        v_BHLK = self._split_heads(x_BLD, self.w_v_DHK)
 
         attn_BHLL = torch.einsum("b h l k, b h s k -> b h l s", q_BHLK, k_BHLK)  # (B, H, L, L)
         attn_BHLL = attn_BHLL / (self.head_dim ** 0.5)

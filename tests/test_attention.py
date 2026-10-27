@@ -27,9 +27,7 @@ def test_multi_head_attention_matches_torch():
     torch.manual_seed(0)
     dim = 4
     n_heads = 2
-    q_BLD = torch.randn(2, 3, dim)
-    k_BLD = torch.randn(2, 3, dim)
-    v_BLD = torch.randn(2, 3, dim)
+    x_BLD = torch.randn(2, 3, dim)
 
     attention = MultiHeadAttention(dim, n_heads, dim // n_heads)
     reference = torch.nn.MultiheadAttention(dim, n_heads, bias=False, batch_first=True)
@@ -46,7 +44,7 @@ def test_multi_head_attention_matches_torch():
         )
         reference.out_proj.weight.copy_(rearrange(attention.w_o_HKD, "h k d -> d (h k)"))
 
-    actual = attention(q_BLD, k_BLD, v_BLD)
-    expected, _ = reference(q_BLD, k_BLD, v_BLD)
+    actual = attention(x_BLD)
+    expected, _ = reference(x_BLD, x_BLD, x_BLD)
 
     torch.testing.assert_close(actual, expected)
