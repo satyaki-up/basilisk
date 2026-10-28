@@ -1,5 +1,3 @@
-from collections.abc import Iterable
-
 import torch
 
 
@@ -7,7 +5,7 @@ class AdamW:
 
     def __init__(
         self,
-        params: Iterable[torch.nn.Parameter],
+        model: torch.nn.Module,
         lr: float = 1e-3,
         betas: tuple[float, float] = (0.9, 0.999),
         eps: float = 1e-8,
@@ -21,7 +19,7 @@ class AdamW:
             raise ValueError(f"Invalid betas: {betas}")
         if weight_decay < 0:
             raise ValueError(f"Invalid weight decay: {weight_decay}")
-        self.params = list(params)
+        self.params = list(model.parameters())
         self.lr = lr
         self.beta1 = betas[0]
         self.beta2 = betas[1]

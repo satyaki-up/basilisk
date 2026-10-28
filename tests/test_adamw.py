@@ -10,7 +10,7 @@ def test_adamw_matches_torch():
         reference = torch.nn.Linear(4, 3)
         reference.load_state_dict(model.state_dict())
 
-        optimizer = AdamW(model.parameters(), weight_decay=weight_decay)
+        optimizer = AdamW(model, weight_decay=weight_decay)
         reference_optimizer = torch.optim.AdamW(reference.parameters(), weight_decay=weight_decay)
 
         for step in range(10):

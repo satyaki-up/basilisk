@@ -1,12 +1,12 @@
 # Basilisk
 
-Industrial grade LLM training.
+Industrial grade LLM training.  
 Based on other libraries out there, in both the pytorch and jax ecosystems (torchtitan, megatron-lm, olmo-core, deepspeed, marin, flax, equinox).
 
 
 ### Pending
 
-- Trainer
+- Dataloader
 - Optimizers (Muon etc.)
 - CLI/config-based launch
 - GPU support
