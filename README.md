@@ -1,6 +1,6 @@
 # Basilisk
 
-Industrial grade LLM training.  
+Industrial grade LLM pretraining.  
 Based on other libraries out there, in both the pytorch and jax ecosystems (torchtitan, megatron-lm, olmo-core, deepspeed, marin, flax, equinox).
 
 
