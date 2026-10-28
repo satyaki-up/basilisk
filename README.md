@@ -6,15 +6,14 @@ Based on other libraries out there, in both the pytorch and jax ecosystems (torc
 
 ### Pending
 
-- Dataloader
-- Optimizers (Muon etc.)
-- CLI/config-based launch
-- GPU support
+- Configs
+- Kernels
 - DP, FSDP/Zero-3, TP/SP, CP, PP
 - MoE (router, dispatch/combine), EP
 - Checkpointing
 - Activation checkpointing, gradient accumulation
 - Mixed precision training
+- Muon
 - Long context (YaRN etc)
 - Inference-specific optimizations (KV cache)
 

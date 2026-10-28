@@ -8,15 +8,23 @@ import torch
 from basilisk.optimizers.adamw import AdamW
 
 
+def get_device() -> torch.device:
+    if torch.cuda.is_available():
+        return torch.device("cuda")
+    return torch.device("cpu")
+
+
 class Trainer:
 
     def __init__(self, model: torch.nn.Module):
-        self.model = model
-        self.optimizer = AdamW(model)
+        self.device = get_device()
+        self.model = model.to(self.device)
+        self.optimizer = AdamW(self.model)
 
 
     def step(self, tokens_BL: torch.Tensor) -> torch.Tensor:
         self.model.train()
+        tokens_BL = tokens_BL.to(self.device)
         logits = self.model(tokens_BL)  # (B, L, vocab)
         # Position t predicts token t + 1. Pad ids are -100 and drop out of the mean.
         loss = torch.nn.functional.cross_entropy(

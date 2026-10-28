@@ -2,12 +2,13 @@
 # Each document is one batch of shape (1, L). Lengths differ, so documents
 # are not stacked.
 
+# Example usage: uv run python examples/train_gpt.py --limit 100
 import argparse
 from pathlib import Path
 
 import torch
 
-from basilisk.trainer import Trainer
+from basilisk.trainer import Trainer, get_device
 from basilisk.transformer import Transformer
 
 
@@ -48,6 +49,7 @@ def main() -> None:
         raise ValueError(f"--limit must be at least 1, got {args.limit}")
 
     documents, vocab_size = load_documents(args.data)
+    device = get_device()
     torch.manual_seed(0)
     model = Transformer(
         dim=DIM,
@@ -55,10 +57,10 @@ def main() -> None:
         head_dim=HEAD_DIM,
         n_blocks=N_BLOCKS,
         vocab_size=vocab_size,
-    )
+    ).to(device)
     trainer = Trainer(model)
     for step, tokens_BL in enumerate(document_batches(documents, args.limit), start=1):
-        loss = trainer.step(tokens_BL)
+        loss = trainer.step(tokens_BL.to(device))
         print(f"step {step} loss {loss.item():.4f} length {tokens_BL.shape[1]}", flush=True)
 
 
