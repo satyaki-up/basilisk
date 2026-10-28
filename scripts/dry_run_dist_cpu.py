@@ -1,7 +1,7 @@
 # Dry run of of collective operations on one CPU via multiple processes.
 
 # Example usage:
-# uv run torchrun --standalone --local-addr 127.0.0.1 --nproc_per_node=4 scripts/dry_run_dist_cpu.py
+# uv run torchrun --standalone --local-addr 127.0.0.1 --nproc_per_node="cpu" scripts/dry_run_dist_cpu.py
 import os
 import sys
 
@@ -24,7 +24,7 @@ def main() -> None:
         got = local.item()
         if got != expected:
             raise RuntimeError(f"rank {rank} allreduce sum {got}, expected {expected}")
-        print(f"rank {rank}/{world_size} allreduce sum {got:.0f}", flush=True)
+        print(f"rank {rank}/{world_size} allreduce sum {got:.0f}\n", flush=True)
     finally:
         dist.destroy_process_group()
 
