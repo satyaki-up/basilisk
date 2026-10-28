@@ -1,9 +1,8 @@
 # Downloads NeelNanda/pile-10k, tokenizes it with the Llama 2 tokenizer, and
 # writes one tensor per document. Each document is <bos> tokens <eos>, truncated
-# to MAX_SEQ_LEN. A document trains as tokens_BL of shape (1, L):
-#   trainer.step(document.unsqueeze(0))
-# Ids are in [0, vocab_size).
+# to MAX_SEQ_LEN.
 
+# Example usage: uv run python scripts/prep_data.py --output data/pile-10k.pt
 import argparse
 from pathlib import Path
 
@@ -53,8 +52,6 @@ def prepare(output: Path = DEFAULT_OUTPUT) -> list[torch.Tensor]:
     documents = tokenize_texts(list(dataset["text"]), tokenizer)
     vocab_size = tokenizer.vocab_size
     for document in documents:
-        if document.numel() > MAX_SEQ_LEN:
-            raise ValueError(f"Document length {document.numel()} exceeds {MAX_SEQ_LEN}")
         if int(document.min()) < 0 or int(document.max()) >= vocab_size:
             raise ValueError(
                 f"Token ids {(int(document.min()), int(document.max()))} "
