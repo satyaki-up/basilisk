@@ -1,6 +1,4 @@
 # Trains a Transformer on the documents written by scripts/prep_data.py.
-# Each step is a batch of BATCH_SIZE documents, padded with -100 where lengths differ.
-# Under torchrun, each rank trains on its own batches and the trainer averages gradients.
 
 # One process: uv run python examples/train_gpt.py --limit 100
 # Four ranks on one CPU:
@@ -131,7 +129,7 @@ def main() -> None:
                     flush=True,
                 )
         if process_rank == 0:
-            print(f"{time.perf_counter() - started:.1f}", flush=True)
+            print(f"Execution time {time.perf_counter() - started:.1f}", flush=True)
     finally:
         if distributed:
             shutdown()
