@@ -9,13 +9,20 @@
 import torch
 
 from basilisk.attention import MultiHeadAttention
-from basilisk.mlp import MLP
+from basilisk.mlp import MLP, MLPTensorParallel
 from basilisk.norm import RMSNorm
 
 
 class TransformerBlock(torch.nn.Module):
 
-    def __init__(self, dim: int, n_heads: int, head_dim: int, dropout: float = 0.0):
+    def __init__(
+        self,
+        dim: int,
+        n_heads: int,
+        head_dim: int,
+        dropout: float = 0.0,
+        tensor_parallel: bool = False,
+    ):
         super().__init__()
         self.dim = dim
         self.n_heads = n_heads
@@ -23,7 +30,8 @@ class TransformerBlock(torch.nn.Module):
         self.norm_attention = RMSNorm(dim)
         self.attention = MultiHeadAttention(dim, n_heads, head_dim)
         self.norm_mlp = RMSNorm(dim)
-        self.mlp = MLP(dim, hidden_dim=4 * dim)
+        mlp = MLPTensorParallel if tensor_parallel else MLP
+        self.mlp = mlp(dim, hidden_dim=4 * dim)
         self.dropout = torch.nn.Dropout(dropout)
 
 

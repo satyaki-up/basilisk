@@ -24,6 +24,7 @@ class Transformer(torch.nn.Module):
         n_blocks: int,
         vocab_size: int,
         dropout: float = 0.0,
+        tensor_parallel: bool = False,
     ):
         super().__init__()
         self.dim = dim
@@ -35,7 +36,7 @@ class Transformer(torch.nn.Module):
         self.rotary = Rotary(head_dim)
         self.blocks = torch.nn.ModuleList(
             [
-                TransformerBlock(dim, n_heads, head_dim, dropout)
+                TransformerBlock(dim, n_heads, head_dim, dropout, tensor_parallel)
                 for _ in range(n_blocks)
             ]
         )
