@@ -5,7 +5,7 @@ import pytest
 import torch
 import torch.distributed as dist
 
-from basilisk.mlp import _SumInputGrads, _SumOutputs
+from basilisk.distributed.tensor_parallel import _SumInputGrads, _SumOutputs
 
 
 @pytest.fixture(scope="module")

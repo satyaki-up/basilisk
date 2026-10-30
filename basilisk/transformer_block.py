@@ -28,7 +28,7 @@ class TransformerBlock(torch.nn.Module):
         self.n_heads = n_heads
         self.head_dim = head_dim
         self.norm_attention = RMSNorm(dim)
-        self.attention = MultiHeadAttention(dim, n_heads, head_dim)
+        self.attention = MultiHeadAttention(dim, n_heads, head_dim, tensor_parallel)
         self.norm_mlp = RMSNorm(dim)
         mlp = MLPTensorParallel if tensor_parallel else MLP
         self.mlp = mlp(dim, hidden_dim=4 * dim)

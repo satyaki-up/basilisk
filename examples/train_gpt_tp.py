@@ -1,5 +1,6 @@
 # Trains a Transformer on the documents written by scripts/prep_data.py.
-# Tensor parallel covers the MLP only
+# Tensor parallel covers attention and the MLP.
+# Q, K, and V are split by column, and the output projection by row.
 
 # One process: uv run python examples/train_gpt_tp.py --limit 100
 # Two ranks on one CPU:
@@ -17,8 +18,8 @@ from basilisk.transformer import Transformer
 
 DEFAULT_DATA = Path(__file__).resolve().parents[1] / "data" / "pile-10k.pt"
 DIM = 64
-N_HEADS = 1
-HEAD_DIM = 64
+N_HEADS = 2
+HEAD_DIM = 32
 N_BLOCKS = 2
 BATCH_SIZE = 2
 

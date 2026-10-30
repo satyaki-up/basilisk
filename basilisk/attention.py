@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from einops import rearrange
 import torch
 
+from basilisk.distributed.tensor_parallel import _SumInputGrads, _SumOutputs, _rank_and_world_size
 from basilisk.rope import Rotary, apply_rotary_pos_emb
 
 
@@ -43,19 +44,35 @@ class ScaledDotProductAttention(torch.nn.Module):
 
 class MultiHeadAttention(torch.nn.Module):
 
-    def __init__(self, dim: int, n_heads: int, head_dim: int):
+    def __init__(self, dim: int, n_heads: int, head_dim: int, tensor_parallel: bool = False):
         super().__init__()
         self.dim = dim
         self.n_heads = n_heads
         self.head_dim = head_dim
-        self.w_q_DHK = torch.nn.Parameter(torch.empty(dim, n_heads, head_dim))
-        self.w_k_DHK = torch.nn.Parameter(torch.empty(dim, n_heads, head_dim))
-        self.w_v_DHK = torch.nn.Parameter(torch.empty(dim, n_heads, head_dim))
-        self.w_o_HKD = torch.nn.Parameter(torch.empty(n_heads, head_dim, dim))
-        torch.nn.init.xavier_uniform_(rearrange(self.w_q_DHK, "d h k -> d (h k)"))
-        torch.nn.init.xavier_uniform_(rearrange(self.w_k_DHK, "d h k -> d (h k)"))
-        torch.nn.init.xavier_uniform_(rearrange(self.w_v_DHK, "d h k -> d (h k)"))
-        torch.nn.init.xavier_uniform_(rearrange(self.w_o_HKD, "h k d -> (h k) d"))
+        self.tensor_parallel = tensor_parallel
+        if tensor_parallel:
+            self.rank, self.world_size = _rank_and_world_size()
+            if n_heads % self.world_size != 0:
+                raise ValueError(
+                    f"n_heads {n_heads} is not divisible by world size {self.world_size}"
+                )
+        else:
+            self.rank, self.world_size = 0, 1
+        self.local_heads = n_heads // self.world_size
+        # Q, K, V are column-parallel across heads. O is row-parallel.
+        q_DHK = torch.empty(dim, n_heads, head_dim)
+        k_DHK = torch.empty(dim, n_heads, head_dim)
+        v_DHK = torch.empty(dim, n_heads, head_dim)
+        o_HKD = torch.empty(n_heads, head_dim, dim)
+        torch.nn.init.xavier_uniform_(rearrange(q_DHK, "d h k -> d (h k)"))
+        torch.nn.init.xavier_uniform_(rearrange(k_DHK, "d h k -> d (h k)"))
+        torch.nn.init.xavier_uniform_(rearrange(v_DHK, "d h k -> d (h k)"))
+        torch.nn.init.xavier_uniform_(rearrange(o_HKD, "h k d -> (h k) d"))
+        start = self.rank * self.local_heads
+        self.w_q_DHK = torch.nn.Parameter(q_DHK[:, start : start + self.local_heads].clone())
+        self.w_k_DHK = torch.nn.Parameter(k_DHK[:, start : start + self.local_heads].clone())
+        self.w_v_DHK = torch.nn.Parameter(v_DHK[:, start : start + self.local_heads].clone())
+        self.w_o_HKD = torch.nn.Parameter(o_HKD[start : start + self.local_heads].clone())
 
 
     def forward(
@@ -63,6 +80,8 @@ class MultiHeadAttention(torch.nn.Module):
         x_BLD: torch.Tensor,
         rotary: Rotary | None = None,
     ) -> torch.Tensor:
+        if self.world_size > 1:
+            x_BLD = _SumInputGrads.apply(x_BLD)
         q_BHLK = self._split_heads(x_BLD, self.w_q_DHK)
         k_BHLK = self._split_heads(x_BLD, self.w_k_DHK)
         v_BHLK = self._split_heads(x_BLD, self.w_v_DHK)
@@ -76,7 +95,10 @@ class MultiHeadAttention(torch.nn.Module):
 
         out_BLHK = rearrange(out_BHLK, "b h l k -> b l h k")  # (B, L, H, K)
         joined_BLH = rearrange(out_BLHK, "b l h k -> b l (h k)")  # (B, L, H * K)
-        return joined_BLH @ rearrange(self.w_o_HKD, "h k d -> (h k) d")  # (B, L, D)
+        partial_BLD = joined_BLH @ rearrange(self.w_o_HKD, "h k d -> (h k) d")  # (B, L, D)
+        if self.world_size > 1:
+            return _SumOutputs.apply(partial_BLD)  # (B, L, D)
+        return partial_BLD  # (B, L, D)
 
 
     def _apply_rope(
@@ -91,4 +113,4 @@ class MultiHeadAttention(torch.nn.Module):
 
     def _split_heads(self, x_BLD: torch.Tensor, w_DHK: torch.Tensor) -> torch.Tensor:
         projected_BLH = x_BLD @ rearrange(w_DHK, "d h k -> d (h k)")  # (B, L, H * K)
-        return rearrange(projected_BLH, "b l (h k) -> b h l k", h=self.n_heads)  # (B, H, L, K)
+        return rearrange(projected_BLH, "b l (h k) -> b h l k", h=self.local_heads)  # (B, H, L, K)
